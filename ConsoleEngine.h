@@ -295,9 +295,13 @@ public:
 	ConsoleEngine() {}
 
 protected:
+	/* *pure virtual* It's executed once when the start function is called*/
 	virtual void begin() = 0;
+
+	/* *pure virtua* It's executed every frame after the start function is called*/
 	virtual void update(float elapsedTime) = 0;
 
+	/*returns true if the specified key has gone down since the last keyState [keyDown, keyUp, keyPressed] function call*/
 	bool keyDown(keyAccess key) {
 		short state = GetAsyncKeyState(key);
 		if ((0x8000 & state) != 0) {
@@ -311,6 +315,8 @@ protected:
 		}
 		return false;
 	}
+
+	/*returns true if the specified key has gone up since the last keyState [keyDown, keyUp, keyPressed] function call*/
 	bool keyUp(keyAccess key) {
 		short state = GetAsyncKeyState(key);
 		if ((0x8000 & state) == 0) {
@@ -325,21 +331,24 @@ protected:
 		return false;
 	}
 
+	/*returns true if the specified key is pressed in the moment the function is called*/
 	bool keyPressed(keyAccess key) {
-		return (0x8000 & GetAsyncKeyState(key)) != 0;
+		keyState[key] = (0x8000 & GetAsyncKeyState(key)) != 0;
+		return keyState[key];
 	}
 
 public:
+	/*starts the engine loop if the renderer is properly set*/
 	bool start() {
 		if (this->set()) {
-			std::thread loop(&ConsoleEngine::gameLoop, this);
+			std::thread loop(&ConsoleEngine::engineLoop, this);
 			loop.join();
 		}
 		return 0;
 	}
 
 private:
-	void gameLoop() {
+	void engineLoop() {
 		auto ts1 = std::chrono::system_clock::now();
 		begin();
 		auto ts2 = std::chrono::system_clock::now();
