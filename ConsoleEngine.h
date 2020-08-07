@@ -6,14 +6,43 @@
 
 void swap (int& n1, int& n2) { int t = n1; n1 = n2; n2 = t; };
 
-/* simple vector struct */
+/* simple vector2 struct */
 template<typename T>
-struct vec2{
+struct Vec2{
 	T x;
 	T y;
 
-	vec2(T x, T y) : x(x), y(y) {}
-	vec2(const vec2<T>& other) : x(other.x), y(other.y) {}
+	Vec2() : x(0), y(0) {}
+	Vec2(T x, T y) : x(x), y(y) {}
+	Vec2(const Vec2<T>& other) : x(other.x), y(other.y) {}
+};
+
+/* simple vector3 struct */
+template<typename T>
+struct Vec3 {
+	T x;
+	T y;
+	T z;
+
+	Vec3() : x(0), y(0), z(0) {}
+	Vec3(T x, T y, T z) : x(x), y(y), z(z) {}
+	Vec3(const Vec3<T>& other) : x(other.x), y(other.y), z (other.z) {}
+
+	T vecMin() {
+		if (x <= y && x <= z) return x;
+		if (y <= x && y <= z) return y;
+		if (z <= x && z <= y) return z;
+	}
+	T vecMax() {
+		if (x >= y && x >= z) return x;
+		if (y >= x && y >= z) return y;
+		if (z >= x && z >= y) return z;
+	}
+
+	static Vec3 cross(Vec3& a, Vec3& b) {
+		return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x };
+	}
+
 };
 
 /* class encapsuling console drawing functionality */
@@ -25,15 +54,23 @@ class ConsoleGraphics {
 
 	bool _set;
 
+	short _color = 0xFF;
+
 protected:
-	short color = 0x00FF;
-	char pixChar = 0x2588;
+	wchar_t pixChar = 0x2592;
 
 	CHAR_INFO* screenBuffer;
 
 	HANDLE hConsole;
 	COORD bufferSize;
 	SMALL_RECT windowRect;
+	
+	typedef enum : uint8_t {
+		BLACK, DARK_BLUE = 0x11, DARK_GREEN = 0x22, DARK_CYAN = 0x33,
+		DARK_RED = 0x44, DARK_MAGENTA = 0x55, DARK_YELLOW = 0x66, LIGTH_GREY = 0x77,
+		GREY = 0x88, BLUE = 0x99, GREEN = 0xAA, CYAN = 0xBB,
+		RED = 0xCC, MAGENTA = 0xDD, YELLOW = 0xEE, WHITE = 0xFF
+	} Color;
 
 	ConsoleGraphics() {}
 	~ConsoleGraphics() { delete[] screenBuffer; }
@@ -88,6 +125,68 @@ public:
 	}
 
 protected:
+	bool setColor(Color c, uint8_t brightness = 6) {
+		if (brightness > 6) return 0;
+		switch (brightness)
+		{
+		case 0:
+			_color = 0;
+			break;
+		case 1:
+			_color = 0x0F & (c - 0x8);
+			break;
+		case 2:
+			_color = 0xF0 & (c - 0x80);
+			break;
+		case 3:
+			_color = c - 0x88;
+			break;
+		case 4:
+			_color = c - 0x80;
+			break;
+		case 5:
+			_color = c - 0x08;
+			break;
+		case 6:
+			_color = c;
+			break;
+		}
+		return 1;
+	}
+	bool blendColor(Color main, Color second, uint8_t blend = 0) {
+		if (blend > 3) return 0;
+		switch (blend)
+		{
+		case 0:
+			_color = main;
+			break;
+		case 1:
+			_color = (main & 0xF0) | (second & 0x0F);
+			break;
+		case 2:
+			_color = (main & 0x0F) | (second & 0xF0);
+			break;
+		case 3:
+			_color = second;
+			break;
+		}
+		return 1;
+	}
+
+	bool greyScale(uint8_t brightness = 11) {
+		if (brightness < 4) blendColor(BLACK, GREY, brightness);
+		else if (brightness < 8) blendColor(GREY, LIGTH_GREY, brightness - 4);
+		else if (brightness < 12) blendColor(LIGTH_GREY, WHITE, brightness - 8);
+		else return 0;
+		return 1;
+	}
+	bool brigthColor(Color c, uint8_t brightness = 6) {
+		if (brightness < 7) setColor(c, brightness);
+		else if (brightness < 11) blendColor(c, WHITE, brightness - 7);
+		else return 0;
+		return 1;
+	}
+
 	/*cleans screenBuffer*/
 	void clear() {
 		for (int i = 0; i < _width * _height; i++) {
@@ -109,25 +208,52 @@ protected:
 	void point(int x, int y) {
 		if (x < _width && x >= 0 && y < _height && y >= 0) {
 			screenBuffer[y * _width + x].Char.UnicodeChar = pixChar;
-			screenBuffer[y * _width + x].Attributes = color;
+			screenBuffer[y * _width + x].Attributes = _color;
 		}
 	}
-	void point(vec2<int>& pos) {
+	void point(Vec2<int>& pos) {
 		point(pos.x, pos.y);
 	}
 
 	/*writes a line that goes from and to the given points*/
 	void line(int x1, int y1, int x2, int y2) {
-		std::vector<vec2<int>> pointBuffer;
-		lineBuffer(x1, y1, x2, y2, pointBuffer);
+		bool vert = false;
+
+		if (abs(x2 - x1) < abs(y2 - y1)) {
+			swap(x1, y1);
+			swap(x2, y2);
+			vert = true;
+		}
+		if (x2 < x1) {
+			swap(x1, x2);
+			swap(y1, y2);
+		}
+
+		int dx = x2 - x1;
+		int dy = y2 - y1;
+		int D = 2 * abs(dy) - abs(dx);
+		int y = y1;
+
+		for (int x = x1; x <= x2; x++) {
+			if(vert) point(y, x);
+			else point(x, y);
+
+			if (D > 0) {
+				y += (dy < 0)? -1: 1;
+				D -= 2 * abs(dx);
+			}
+			D += 2 * abs(dy);
+		}
+	}
+	void line(Vec2<int>& a, Vec2<int>& b) {
+		line(a.x, a.y, b.x, b.y);
 	}
 
 	/*writes the triangle described by the given points*/
 	void triangle(int x1, int y1, int x2, int y2, int x3, int y3) {
-		std::vector<vec2<int>> pointBuffer;
-		lineBuffer(x1, y1, x2, y2, pointBuffer);
-		lineBuffer(x2, y2, x3, y3, pointBuffer);
-		lineBuffer(x3, y3, x1, y1, pointBuffer);
+		line(x1, y1, x2, y2);
+		line(x2, y2, x3, y3);
+		line(x3, y3, x1, y1);
 	}
 
 	/*writes a rectangle with his top-left corner at the given point, and with the given dimensions*/
@@ -157,26 +283,30 @@ protected:
 
 	/*writes a triangle just as the triangle function, and fill it*/
 	void fillTriangle(int x1, int y1, int x2, int y2, int x3, int y3) {
-		auto horLine = [&](int xi, int xe, int y) {
-			if (xe < xi) swap(xi, xe);
-			for (int i = xi; i <= xe; i++) point(i, y);
-		};
+		Vec3<int> xComp(x1, x2, x3);
+		Vec3<int> yComp(y1, y2, y3);
 
-		if (y1 > y3) { swap(y1, y3); swap(x1, x3); }
-		if (y1 > y2) { swap(y1, y2); swap(x1, x2); }
-		if (y2 > y3) { swap(y2, y3); swap(x2, x3); }
+		Vec2<int> bbmin(xComp.vecMin(), yComp.vecMin());
+		Vec2<int> bbmax(xComp.vecMax(), yComp.vecMax());
 
-		std::vector<vec2<int>> legs;
-		std::vector<vec2<int>> hyp;
+		Vec3<float> a(xComp.y - xComp.x, xComp.z - xComp.x, 0);
+		Vec3<float> b(yComp.y - yComp.x, yComp.z - yComp.x, 0);
 
-		lineBuffer(x1, y1, x2, y2, legs, true);
-		legs.pop_back();
-		lineBuffer(x2, y2, x3, y3, legs, true);
-		legs.pop_back();
-		lineBuffer(x1, y1, x3, y3, hyp, true);
-		hyp.pop_back();
+		Vec3<float> barycentric;
 
-		for (u_int i = 0; i < legs.size(); i++) horLine(legs[i].x, hyp[i].x, legs[i].y);
+		for (int x = bbmin.x; x <= bbmax.x; x++) {
+			for (int y = bbmin.y; y <= bbmax.y; y++) {
+				a.z = xComp.x - x;
+				b.z = yComp.x - y;
+				Vec3<float> u = Vec3<float>::cross( a, b );
+
+				if (abs(u.z) < 1) continue;
+				barycentric = { 1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z };
+
+				if (barycentric.x >= 0 && barycentric.y >= 0 && barycentric.z >= 0)
+					point(x, y);
+			}
+		}
 	}
 
 	/*writes a rectangle just as the rectangle function and fill it*/
@@ -206,61 +336,6 @@ protected:
 	}
 
 private:
-	/* modifies an array, adding the points that wold make part of a line from and to the given points, uses the
-	bresenham's line algorithm (without integer operations only optimization). if the critPoints flag is set only
-	points with different y will be added (specifically the points previous to the y change)*/
-	void lineBuffer(int x1, int y1, int x2, int y2, std::vector<vec2<int>>& out, bool critPoints = false) {
-		int xFactor = x2 - x1;
-		int yFactor = y2 - y1;
-		float err = 0;
-		int x = x1;
-		int y = y1;
-		if (xFactor != 0) {
-			float dErr = abs((float)yFactor / (float)xFactor);
-			if (dErr <= 1) {
-				if (critPoints) out.reserve(out.size() + abs(yFactor) + 1);
-				for (; ((xFactor > 0) ? x <= x2 : x >= x2); x += (xFactor > 0) ? 1 : -1) {
-					if (!critPoints) point(x, y);
-					err += dErr;
-					if (err >= 0.5) {
-						if (critPoints) out.emplace_back(vec2<int>(x, y));
-						y += (yFactor > 0) ? 1 : -1;
-						err -= 1.0f;
-					}
-				}
-				if (critPoints) {
-					if (out.size() < out.capacity()) {
-						out.emplace_back(vec2<int>(x - 1, y));
-					}
-				}
-			}
-			else {
-				dErr = 1 / dErr;
-				if(critPoints) out.reserve(out.size() + abs(yFactor) + 1);
-				for (; ((yFactor > 0) ? y <= y2 : y >= y2); y += (yFactor > 0) ? 1 : -1) {
-					if (critPoints) out.emplace_back(vec2<int>(x, y));
-					else point(x, y);
-					err += dErr;
-					if (err >= 0.5) {
-						x += (xFactor > 0) ? 1 : -1;
-						err -= 1.0f;
-					}
-				}
-			}
-		}
-		else {
-			if(critPoints) out.reserve(out.size() + abs(yFactor) + 1);
-			if (y1 > y2) {
-				y = y2;
-				swap(y1, y2);
-			}
-			for (; y <= y2; y++) {
-				if (critPoints) out.emplace_back(vec2<int>(x, y));
-				else point(x, y);
-			}
-		}
-	}
-
 	/*writes points radially simmetrycally in each octant of a circle*/
 	void octant(int xc, int yc, int x, int y) {
 		point(xc + x, yc + y);
