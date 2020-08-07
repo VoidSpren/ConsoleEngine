@@ -125,6 +125,7 @@ public:
 	}
 
 protected:
+	//TODO: documentation
 	bool setColor(Color c, uint8_t brightness = 6) {
 		if (brightness > 6) return 0;
 		switch (brightness)
@@ -180,12 +181,13 @@ protected:
 		else return 0;
 		return 1;
 	}
+	/* //still in testing
 	bool brigthColor(Color c, uint8_t brightness = 6) {
 		if (brightness < 7) setColor(c, brightness);
 		else if (brightness < 11) blendColor(c, WHITE, brightness - 7);
 		else return 0;
 		return 1;
-	}
+	}*/
 
 	/*cleans screenBuffer*/
 	void clear() {
