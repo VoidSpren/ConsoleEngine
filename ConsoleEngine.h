@@ -551,7 +551,7 @@ protected:
 					z += p3.z * barycentric.z;
 
 
-					float zbuf = zBuffer(x, y);
+					//float zbuf = zBuffer(x, y);
 					//if(zbuf < 3.4e+38f) write();
 					if(zBuffer(x, y) > z){
 						zBuffer(x, y) = z;
