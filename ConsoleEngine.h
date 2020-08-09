@@ -496,6 +496,12 @@ protected:
 	Console3DGraphics() {}
 	~Console3DGraphics() { delete[] _zBuffer; }
 
+	void clear3D() {
+		for (int i = 0; i < width() * height(); i++) {
+			_zBuffer[i] = 0;
+		}
+	}
+
 	bool construct3D() {
 		_zBuffer = new float[width() * height()];
 		for (int i = 0; i < width() * height(); i++) {
@@ -504,16 +510,16 @@ protected:
 		return 1;
 	}
 
-	float get_zBuffer(int x, int y) {
+	float& zBuffer(int x, int y) {
 		if (x < width() && x >= 0 && y < height() && y >= 0) {
 			return _zBuffer[y * width() + x];
 		}
 	}
-	void set_zBuffer(int x, int y, float n) {
-		if (x < width() && x >= 0 && y < height() && y >= 0) {
-			_zBuffer[y * width() + x] = n;
-		}
-	}
+	//void set_zBuffer(int x, int y, float n) {
+	//	if (x < width() && x >= 0 && y < height() && y >= 0) {
+	//		_zBuffer[y * width() + x] = n;
+	//	}
+	//}
 
 	void fillTriangle(Vec4f& p1, Vec4f& p2, Vec4f& p3) {
 		float z;
@@ -535,7 +541,7 @@ protected:
 				b.z = yComp.x - y;
 				Vec3f u = Vec3f::cross(a, b);
 
-				if (abs(u.z) < 1) continue;
+				//if (abs(u.z) < 1) continue;
 				barycentric = { 1.f - (u.x + u.y) / u.z, u.y / u.z, u.x / u.z };
 
 				if (barycentric.x >= 0 && barycentric.y >= 0 && barycentric.z >= 0) {
@@ -544,8 +550,11 @@ protected:
 					z += p2.z * barycentric.y;
 					z += p3.z * barycentric.z;
 
-					if(get_zBuffer(x, y) < z){
-						set_zBuffer(x, y, z);
+
+					float zbuf = zBuffer(x, y);
+					//if(zbuf < 3.4e+38f) write();
+					if(zBuffer(x, y) > z){
+						zBuffer(x, y) = z;
 						point(x, y);
 					}
 				}
@@ -649,6 +658,11 @@ private:
 			elapsedTime = ts1 - ts2;
 			fElapsedTime = elapsedTime.count();
 			ts2 = ts1;
+
+			//TODO: find better way to do this
+#ifdef _3D_ENGINE
+			clear3D();
+#endif // _3D_ENGINE
 
 			update(fElapsedTime);
 
