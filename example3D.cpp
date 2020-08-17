@@ -2,28 +2,49 @@
 #include "ConsoleEngine.h"
 
 class Demo : public ConsoleEngine {
-	float aux = 3.f;
+
+	float despX = 0;
+	float despY = 0;
+	float despZ = 0;
 	float theta = 0;
 
-	Vec4f p1 = { 3.f, 3.f, 1.f };
-	Vec4f p2 = { 150.f, 72.f, 15.f };
-	Vec4f p3 = { 3.f, 147.f, 1.f };
+	Mesh teapot;
+	Mesh cube;
 
-	Vec4f p4 = { 197.f, 3.f, 1.f };
-	Vec4f p5 = { 50.f, 72.f, 15.f };
-	Vec4f p6 = { 197.f, 147.f, 1.f };
-
-	void begin() {};
+	void begin() {
+		cube = Mesh(Vec4f(0, 0, 5.f), Vec4f(F_PI / 4.f, F_PI / 4.f, 0), 1.f, "resources/cube.obj");
+	};
 	void update(float elapsedTime) {
-		fillTriangle(p1, p2, p3);
-		setColor(RED);
-		fillTriangle(p4, p5, p6);
+		clear();
+
+		if (keyPressed(LEFT)) despX = -elapsedTime * 10.f;
+		else if (keyPressed(RIGHT)) despX = elapsedTime * 10.f;
+		else despX = 0;
+
+		if (keyPressed(UP)) despY = -elapsedTime * 10.f;
+		else if (keyPressed(DOWN)) despY = elapsedTime * 10.f;
+		else despY = 0;
+
+		if (keyPressed(W)) despZ = elapsedTime * 10.f;
+		else if (keyPressed(S)) despZ = -elapsedTime * 10.f;
+		else despZ = 0;
+
+		if (keyPressed(A)) theta = -elapsedTime * 3.f;
+		else if (keyPressed(D)) theta = elapsedTime * 3.f;
+		else theta = 0;
+
+		cube.rotation.y += theta;
+		cube.pos.x += despX;
+		cube.pos.y += despY;
+		cube.pos.z += despZ;
+
+		render(cube,X_ROT, Y_ROT);
 	};
 };
 
 int main() {
 	Demo demo;
-	if (demo.construct(200, 150, 2, 2)) {
+	if (demo.construct(480, 270, 2, 2) && demo.construct3D(F_PI / 3.f)) {
 		demo.start();
 	}
 }
