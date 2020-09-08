@@ -28,13 +28,13 @@ struct Vec2{
 	Vec2(T x, T y) : x(x), y(y) {}
 	Vec2(const Vec2& other) : x(other.x), y(other.y) {}
 
-	static T dotProd(Vec2& a, Vec2& b) { return a.x * b.x + a.y * b.y; }
-	static Vec2 normal(Vec2& in) {
+	static T dotProd(const Vec2& a, const Vec2& b) { return a.x * b.x + a.y * b.y; }
+	static Vec2 unit(const Vec2& in) {
 		float l = sqrtf(in.x * in.x + in.y * in.y);
 		return { in.x / l, in.y / l };
 	}
 
-	void normalize() {
+	void toUnit() {
 		float l = sqrtf(x * x + y * y);
 		x / l; y / l;
 	}
@@ -73,14 +73,14 @@ struct Vec3 {
 		if (z >= x && z >= y) return z;
 	}
 
-	static T dotProd(Vec3& a, Vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
-	static Vec3 cross(Vec3& a, Vec3& b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
-	static Vec3 normal(Vec3& in) {
+	static T dotProd(const Vec3& a, const Vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+	static Vec3 cross(const Vec3& a, const Vec3& b) { return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
+	static Vec3 unit(const Vec3& in) {
 		float l = sqrtf(in.x * in.x + in.y * in.y + in.z * in.z);
 		return { in.x / l, in.y / l,in.z / l };
 	}
 
-	void normalize() {
+	void toUnit() {
 		float l = sqrtf(x * x + y * y + z * z);
 		x / l; y / l; z / l;
 	}
@@ -169,7 +169,7 @@ struct Mat4 {
 		}
 		return c;
 	}
-	T* operator [] (const int pos) { return m[pos]; }
+	T* operator [] (const size_t pos) { return m[pos]; }
 	Vec4<T> operator * (const Vec4<T>& vec) {
 		return{
 			vec.x * m[0][0] + vec.y * m[1][0] + vec.z * m[2][0] + vec.w * m[3][0],
@@ -184,12 +184,12 @@ typedef Mat4<float> Mat4f;
 typedef Mat4<double> Mat4d;
 
 template<typename T>
-Vec4<T> operator * (const Vec4<T>& vec, Mat4<T>& mat) {
+Vec4<T> operator * (const Vec4<T>& vec, const Mat4<T>& mat) {
 	return{
-		vec.x * mat.m[0][0] + vec.y * mat.m[1][0] + vec.z * mat.m[2][0] + vec.w * mat.m[3][0],
-		vec.x * mat.m[0][1] + vec.y * mat.m[1][1] + vec.z * mat.m[2][1] + vec.w * mat.m[3][1],
-		vec.x * mat.m[0][2] + vec.y * mat.m[1][2] + vec.z * mat.m[2][2] + vec.w * mat.m[3][2],
-		vec.x * mat.m[0][3] + vec.y * mat.m[1][3] + vec.z * mat.m[2][3] + vec.w * mat.m[3][3]
+		vec.x * mat[0][0] + vec.y * mat[1][0] + vec.z * mat[2][0] + vec.w * mat[3][0],
+		vec.x * mat[0][1] + vec.y * mat[1][1] + vec.z * mat[2][1] + vec.w * mat[3][1],
+		vec.x * mat[0][2] + vec.y * mat[1][2] + vec.z * mat[2][2] + vec.w * mat[3][2],
+		vec.x * mat[0][3] + vec.y * mat[1][3] + vec.z * mat[2][3] + vec.w * mat[3][3]
 	};
 }
 
@@ -223,7 +223,7 @@ public:
 		return _normal;
 	}
 	
-	Vec4f calcNormal() {
+	Vec4f& calcNormal() {
 		Vec4f l2 = vert[2] - vert[0];
 		Vec4f l1 = vert[1] - vert[0];
 		_normal = Vec4f::cross(l1, l2);
@@ -696,7 +696,8 @@ protected:
 		}
 	}
 
-	void render(Mesh& mesh, rot rot1 = NO_ROT, rot rot2 = NO_ROT, rot rot3 = NO_ROT) {
+	/*renders the given mesh, no textures and simple shading*/
+	void renderMesh(Mesh& mesh, rot rot1 = NO_ROT, rot rot2 = NO_ROT, rot rot3 = NO_ROT) {
 		rotMat.identity();
 
 		if (rot1 != NO_ROT || rot2 != NO_ROT || rot3 != NO_ROT) {
@@ -715,7 +716,7 @@ protected:
 
 			Vec4f camToTri = tri.vert[0] - camera;
 			camToTri.toUnit();
-			float dProd = Vec4f::dotProd(tri.calcNormal(), camToTri);
+			float dProd = Vec4f::dotProd(tri.normal(), camToTri);
 			if(dProd > 0){
 				triProj(tri);
 
