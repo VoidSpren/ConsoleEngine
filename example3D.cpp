@@ -38,7 +38,7 @@ class Demo : public ConsoleEngine {
 		cube.pos.y += despY;
 		cube.pos.z += despZ;
 
-		render(cube,X_ROT, Y_ROT);
+		renderMesh(cube,X_ROT, Y_ROT);
 	};
 };
 
